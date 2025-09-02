@@ -208,6 +208,28 @@
               </li>
              </ul>
             </li>
+                      <li class="nav-item has-treeview">
+            <a href="#" class="nav-link">
+                <i class="nav-icon fas fa-wallet"></i>
+                <p>Uwakala<i class="fas fa-angle-left right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+                            <li class="nav-item">
+                <a href="uwakala_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
+                  &nbsp;&nbsp;&nbsp;<i class="fas fa-cart-plus"></i>
+
+                  &nbsp;&nbsp;<p>Andika taarifa</p>
+                </a>
+              </li>
+                                          <li class="nav-item">
+                <a href="report_uwakala_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
+                  &nbsp;&nbsp;&nbsp;<i class="fas fa-cart-plus"></i>
+
+                  &nbsp;&nbsp;<p>Ripoti uwakala</p>
+                </a>
+              </li>
+             </ul>
+            </li>
           <li class="nav-item has-treeview">
             <a href="#" class="nav-link">
                 <i class="nav-icon fas fa-wallet"></i>
@@ -265,6 +287,13 @@
               <a href="sales_report.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
                 &nbsp;&nbsp;&nbsp;<i class="fas fa-file-alt"></i>
                   &nbsp;&nbsp;<p>Ripoti ya mauzo</p>
+                </a>
+              </li>
+                                                        <li class="nav-item">
+                <a href="report_uwakala_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
+                  &nbsp;&nbsp;&nbsp;<i class="fas fa-cart-plus"></i>
+
+                  &nbsp;&nbsp;<p>Ripoti uwakala</p>
                 </a>
               </li>
               <li class="nav-item">

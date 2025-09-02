@@ -5,6 +5,9 @@ include('dbcon.php');
 // Get invoice number from query parameter
 $invoice_number = isset($_GET['invoice_number']) ? $_GET['invoice_number'] : '';
 
+// Check if export is requested
+$export_type = isset($_GET['export']) ? $_GET['export'] : '';
+
 // Initialize filter variables
 $filter_work_mode = isset($_GET['work_mode']) ? $_GET['work_mode'] : '';
 $filter_jina_laini = isset($_GET['jina_laini']) ? $_GET['jina_laini'] : '';
@@ -13,11 +16,6 @@ $filter_date_created_from = isset($_GET['date_created_from']) ? $_GET['date_crea
 $filter_date_created_to = isset($_GET['date_created_to']) ? $_GET['date_created_to'] : '';
 $filter_date_updated_from = isset($_GET['date_updated_from']) ? $_GET['date_updated_from'] : '';
 $filter_date_updated_to = isset($_GET['date_updated_to']) ? $_GET['date_updated_to'] : '';
-
-// Pagination settings
-$records_per_page = isset($_GET['records_per_page']) ? (int)$_GET['records_per_page'] : 10;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$start_from = ($page - 1) * $records_per_page;
 
 // Build WHERE clause for filtering
 $where_conditions = [];
@@ -63,6 +61,145 @@ if (!empty($where_conditions)) {
     $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
 }
 
+// Handle Excel Export
+if ($export_type === 'excel') {
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment;filename="uwakala_report_'.date('Y-m-d').'.xls"');
+    header('Cache-Control: max-age=0');
+    
+    $export_query = "SELECT * FROM uwakala $where_clause ORDER BY created_at DESC";
+    $export_stmt = mysqli_prepare($con, $export_query);
+    
+    if (!empty($query_params)) {
+        $types = str_repeat('s', count($query_params));
+        mysqli_stmt_bind_param($export_stmt, $types, ...$query_params);
+    }
+    
+    mysqli_stmt_execute($export_stmt);
+    $export_result = mysqli_stmt_get_result($export_stmt);
+    
+    echo "ID\tHali ya Kazi\tJina la Laini\tKiasi Kufungua\tKiasi Kufunga\tKiasi Lipa Account\tKiasi Cash\tJumla\tImeundwa na\tTarehe ya Uundaji\tImesasishwa na\tTarehe ya Usasishaji\n";
+    
+    while ($row = mysqli_fetch_assoc($export_result)) {
+        echo $row['id'] . "\t";
+        echo $row['work_mode'] . "\t";
+        echo $row['jina_laini'] . "\t";
+        echo $row['kiasi_kufungua'] . "\t";
+        echo $row['kiasi_kufunga'] . "\t";
+        echo $row['kiasi_lipa_account'] . "\t";
+        echo $row['kiasi_cash'] . "\t";
+        echo $row['jumla'] . "\t";
+        echo $row['created_by'] . "\t";
+        echo $row['created_at'] . "\t";
+        echo ($row['updated_by'] ? $row['updated_by'] : 'N/A') . "\t";
+        echo ($row['updated_at'] ? $row['updated_at'] : 'N/A') . "\n";
+    }
+    
+    exit();
+}
+
+// Handle PDF Export
+if ($export_type === 'pdf') {
+    require_once('./tcpdf/tcpdf.php');
+    
+    $pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
+    $pdf->SetCreator('MauzoApp');
+    $pdf->SetAuthor('MauzoApp');
+    $pdf->SetTitle('Ripoti ya Uwakala');
+    $pdf->SetHeaderData('', 0, 'Ripoti ya Uwakala', 'MauzoApp - ' . date('Y-m-d'));
+    $pdf->setHeaderFont(Array('helvetica', '', 10));
+    $pdf->setFooterFont(Array('helvetica', '', 8));
+    $pdf->SetDefaultMonospacedFont('courier');
+    $pdf->SetMargins(15, 15, 15);
+    $pdf->SetHeaderMargin(5);
+    $pdf->SetFooterMargin(10);
+    $pdf->SetAutoPageBreak(TRUE, 15);
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->AddPage();
+    
+    $export_query = "SELECT * FROM uwakala $where_clause ORDER BY created_at DESC";
+    $export_stmt = mysqli_prepare($con, $export_query);
+    
+    if (!empty($query_params)) {
+        $types = str_repeat('s', count($query_params));
+        mysqli_stmt_bind_param($export_stmt, $types, ...$query_params);
+    }
+    
+    mysqli_stmt_execute($export_stmt);
+    $export_result = mysqli_stmt_get_result($export_stmt);
+    
+    $html = '<h2>Ripoti ya Uwakala</h2>';
+    $html .= '<p><strong>Muda wa Uchambuzi:</strong> ' . date('Y-m-d H:i:s') . '</p>';
+    
+    if (!empty($where_conditions)) {
+        $html .= '<p><strong>Vichujio:</strong> ';
+        $filters = [];
+        if (!empty($filter_work_mode)) $filters[] = "Hali ya Kazi: $filter_work_mode";
+        if (!empty($filter_jina_laini)) $filters[] = "Laini: $filter_jina_laini";
+        if (!empty($filter_created_by)) $filters[] = "Mtumiaji: $filter_created_by";
+        if (!empty($filter_date_created_from)) $filters[] = "Tarehe ya Kuanzia: $filter_date_created_from";
+        if (!empty($filter_date_created_to)) $filters[] = "Tarehe ya Mpaka: $filter_date_created_to";
+        $html .= implode(', ', $filters) . '</p>';
+    }
+    
+    $html .= '<table border="1" cellpadding="4">';
+    $html .= '<tr style="background-color:#f2f2f2;">';
+    $html .= '<th>ID</th><th>Hali ya Kazi</th><th>Jina la Laini</th><th>Kiasi Kufungua</th><th>Kiasi Kufunga</th>';
+    $html .= '<th>Kiasi Lipa Account</th><th>Kiasi Cash</th><th>Jumla</th><th>Imeundwa na</th><th>Tarehe ya Uundaji</th>';
+    $html .= '<th>Imesasishwa na</th><th>Tarehe ya Usasishaji</th>';
+    $html .= '</tr>';
+    
+    $grant_total_kufungua = 0;
+    $grant_total_kufunga = 0;
+    $grant_total_lipa_account = 0;
+    $grant_total_cash = 0;
+    $grant_total_jumla = 0;
+    
+    while ($row = mysqli_fetch_assoc($export_result)) {
+        $html .= '<tr>';
+        $html .= '<td>' . $row['id'] . '</td>';
+        $html .= '<td>' . $row['work_mode'] . '</td>';
+        $html .= '<td>' . $row['jina_laini'] . '</td>';
+        $html .= '<td>' . number_format($row['kiasi_kufungua'], 2) . '</td>';
+        $html .= '<td>' . number_format($row['kiasi_kufunga'], 2) . '</td>';
+        $html .= '<td>' . number_format($row['kiasi_lipa_account'], 2) . '</td>';
+        $html .= '<td>' . number_format($row['kiasi_cash'], 2) . '</td>';
+        $html .= '<td>' . number_format($row['jumla'], 2) . '</td>';
+        $html .= '<td>' . $row['created_by'] . '</td>';
+        $html .= '<td>' . date('d/m/Y H:i', strtotime($row['created_at'])) . '</td>';
+        $html .= '<td>' . ($row['updated_by'] ? $row['updated_by'] : 'N/A') . '</td>';
+        $html .= '<td>' . ($row['updated_at'] ? date('d/m/Y H:i', strtotime($row['updated_at'])) : 'N/A') . '</td>';
+        $html .= '</tr>';
+        
+        $grant_total_kufungua += $row['kiasi_kufungua'];
+        $grant_total_kufunga += $row['kiasi_kufunga'];
+        $grant_total_lipa_account += $row['kiasi_lipa_account'];
+        $grant_total_cash += $row['kiasi_cash'];
+        $grant_total_jumla += $row['jumla'];
+    }
+    
+    $html .= '<tr style="background-color:#f8f9fa;font-weight:bold;">';
+    $html .= '<td colspan="3">Jumla Kuu</td>';
+    $html .= '<td>' . number_format($grant_total_kufungua, 2) . '</td>';
+    $html .= '<td>' . number_format($grant_total_kufunga, 2) . '</td>';
+    $html .= '<td>' . number_format($grant_total_lipa_account, 2) . '</td>';
+    $html .= '<td>' . number_format($grant_total_cash, 2) . '</td>';
+    $html .= '<td>' . number_format($grant_total_jumla, 2) . '</td>';
+    $html .= '<td colspan="4"></td>';
+    $html .= '</tr>';
+    
+    $html .= '</table>';
+    
+    $pdf->writeHTML($html, true, false, true, false, '');
+    $pdf->Output('uwakala_report_'.date('Y-m-d').'.pdf', 'D');
+    exit();
+}
+
+// Pagination settings for normal view
+$records_per_page = isset($_GET['records_per_page']) ? (int)$_GET['records_per_page'] : 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$start_from = ($page - 1) * $records_per_page;
+
 // Get total records count
 $count_query = "SELECT COUNT(*) as total FROM uwakala $where_clause";
 $count_stmt = mysqli_prepare($con, $count_query);
@@ -79,12 +216,13 @@ $total_pages = ceil($total_records / $records_per_page);
 
 // Get records with pagination
 $data_query = "SELECT * FROM uwakala $where_clause ORDER BY created_at DESC LIMIT ?, ?";
-$query_params[] = $start_from;
-$query_params[] = $records_per_page;
+$query_params_pagination = $query_params;
+$query_params_pagination[] = $start_from;
+$query_params_pagination[] = $records_per_page;
 
 $data_stmt = mysqli_prepare($con, $data_query);
-$types = str_repeat('s', count($query_params) - 2) . 'ii';
-mysqli_stmt_bind_param($data_stmt, $types, ...$query_params);
+$types = str_repeat('s', count($query_params)) . 'ii';
+mysqli_stmt_bind_param($data_stmt, $types, ...$query_params_pagination);
 mysqli_stmt_execute($data_stmt);
 $result = mysqli_stmt_get_result($data_stmt);
 
@@ -141,6 +279,9 @@ $created_by_values = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala
         border-radius: 5px;
         margin-bottom: 20px;
     }
+    .export-buttons {
+        margin-bottom: 15px;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -184,7 +325,9 @@ $created_by_values = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala
                     <label>Hali ya Kazi</label>
                     <select name="work_mode" class="form-control">
                       <option value="">Chagua Hali ya Kazi</option>
-                      <?php while ($mode = mysqli_fetch_assoc($work_modes)): ?>
+                      <?php 
+                      $work_modes_display = mysqli_query($con, "SELECT DISTINCT work_mode FROM uwakala ORDER BY work_mode");
+                      while ($mode = mysqli_fetch_assoc($work_modes_display)): ?>
                         <option value="<?php echo $mode['work_mode']; ?>" <?php echo $filter_work_mode == $mode['work_mode'] ? 'selected' : ''; ?>>
                           <?php echo ucfirst($mode['work_mode']); ?>
                         </option>
@@ -197,7 +340,9 @@ $created_by_values = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala
                     <label>Jina la Laini</label>
                     <select name="jina_laini" class="form-control">
                       <option value="">Chagua Laini</option>
-                      <?php while ($laini = mysqli_fetch_assoc($jina_laini_values)): ?>
+                      <?php 
+                      $jina_laini_display = mysqli_query($con, "SELECT DISTINCT jina_laini FROM uwakala ORDER BY jina_laini");
+                      while ($laini = mysqli_fetch_assoc($jina_laini_display)): ?>
                         <option value="<?php echo $laini['jina_laini']; ?>" <?php echo $filter_jina_laini == $laini['jina_laini'] ? 'selected' : ''; ?>>
                           <?php echo $laini['jina_laini']; ?>
                         </option>
@@ -210,7 +355,9 @@ $created_by_values = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala
                     <label>Imeundwa na</label>
                     <select name="created_by" class="form-control">
                       <option value="">Chagua Mtumiaji</option>
-                      <?php while ($user = mysqli_fetch_assoc($created_by_values)): ?>
+                      <?php 
+                      $created_by_display = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala ORDER BY created_by");
+                      while ($user = mysqli_fetch_assoc($created_by_display)): ?>
                         <option value="<?php echo $user['created_by']; ?>" <?php echo $filter_created_by == $user['created_by'] ? 'selected' : ''; ?>>
                           <?php echo $user['created_by']; ?>
                         </option>
@@ -262,6 +409,16 @@ $created_by_values = mysqli_query($con, "SELECT DISTINCT created_by FROM uwakala
                 <div class="col-md-12">
                   <button type="submit" class="btn btn-primary">Tafuta</button>
                   <a href="report_uwakala_management.php?invoice_number=<?php echo $invoice_number; ?>" class="btn btn-secondary">Safisha Filter</a>
+                  
+                  <!-- Export Buttons -->
+                  <div class="btn-group export-buttons">
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['export' => 'excel'])); ?>" class="btn btn-success">
+                      <i class="fas fa-file-excel"></i> Pakua Excel
+                    </a>
+                    <!-- <a href="?<?php echo http_build_query(array_merge($_GET, ['export' => 'pdf'])); ?>" class="btn btn-danger">
+                      <i class="fas fa-file-pdf"></i> Pakua PDF
+                    </a> -->
+                  </div>
                 </div>
               </div>
             </form>
