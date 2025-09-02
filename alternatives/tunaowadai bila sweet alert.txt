@@ -1,0 +1,61 @@
+<tbody>
+    <?php
+    // Include database connection
+    include("dbcon.php");
+
+    // Get the current year
+    $currentYear = date("Y");
+
+    // Construct the SQL query to retrieve all sales with credit status
+    $select_sql = "SELECT * FROM sales WHERE hali_ya_malipo='credit'";
+
+    // Execute the SQL query
+    $select_query = mysqli_query($con, $select_sql);
+
+    // Initialize variables for total amount and profit
+    $total_amount = 0;
+    $total_profit = 0;
+    $serialNumber = 1; // Initialize serial number counter
+
+    // Check if there are results
+    if (mysqli_num_rows($select_query) > 0) {
+        // Output the sales data
+        while ($row = mysqli_fetch_assoc($select_query)) {
+            // Calculate total amount
+            $total_amount += $row['total_amount'];
+            // Calculate total profit
+            $total_profit += $row['total_profit'];
+
+            // Output each row of sales data
+            echo "<tr>";
+            echo "<td>" . $serialNumber++ . "</td>"; // Serial number column
+            echo "<td>" . $row['Date'] . "</td>";
+            echo "<td>" . $row['medicines'] . "</td>";
+            echo "<td>" . $row['quantity'] . "</td>";
+            echo "<td>" . $row['total_amount'] . "</td>";
+            echo "<td>" . $row['total_profit'] . "</td>";
+            echo "<td>" . $row['customer_name'] . "</td>";
+            echo "<td>" . $row['phone_number'] . "</td>";
+            echo "<td>" . $row['date_to_pay'] . "</td>";
+            echo "<td>" . $row['created_by'] . "</td>";
+
+            // Add a button in the status column
+            echo "<td>";
+            if ($row['hali_ya_malipo'] == 'credit') {
+                echo '<form method="POST" action="update_status.php">
+                        <input type="hidden" name="sale_id" value="' . $row['id'] . '">
+                        <button type="submit" class="btn btn-sm btn-success">Mark as Paid</button>
+                      </form>';
+            } else {
+                echo "Paid";
+            }
+            echo "</td>";
+
+            echo "</tr>";
+        }
+    } else {
+        // If there are no sales recorded for the specified period, display a message
+        echo '<tr><td colspan="11">No sales found.</td></tr>';
+    }
+    ?>
+</tbody>
