@@ -2,6 +2,8 @@
 error_reporting(1);
 session_start();
 include("dbcon.php");
+include("user_logs.php");
+$userLogger = new UserLogger($con);
 
 // Check if the user is already logged in and check the role
 if (isset($_SESSION['user_session']) && isset($_SESSION['user_role'])) {
@@ -36,15 +38,18 @@ if (isset($_POST['submit'])) {
         $s_password = $row['password'];
         $role = $row['role'];
 
-        if (password_verify($password, $s_password)) {
-            // Set session immediately after successful authentication
-            $_SESSION['user_session'] = $username;
-            $_SESSION['user_role'] = $role; // Store the role in session
-            $_SESSION['store_id'] = $row['store_id'];  // ✅ Correct way
+if (password_verify($password, $s_password)) {
+    // Set session immediately after successful authentication
+    $_SESSION['user_session'] = $username;
+    $_SESSION['user_role'] = $role;
+    $_SESSION['store_id'] = $row['store_id'];
+    $_SESSION['user_id'] = $row['id']; // Store user ID for logging
 
+    // Record login
+    $userLogger->logLogin($row['id'], $row['store_id']);
 
-            // Redirect based on user role
-            $invoice_number = generate_unique_invoice_number($con);
+    // Redirect based on user role
+    $invoice_number = generate_unique_invoice_number($con);
             if ($role === 'admin') {
                 header("location:adminDashboard.php?invoice_number=$invoice_number");
             } elseif ($role === 'cashier') {

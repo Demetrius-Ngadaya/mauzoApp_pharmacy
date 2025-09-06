@@ -391,29 +391,35 @@
                   &nbsp;&nbsp;<p>Ongeza Dawa</p>
                 </a>
               </li>
-              <!-- <li class="nav-item">
-                <a href="hariri_bidhaa.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
-                &nbsp;&nbsp;&nbsp;<i class="nav-icon fas fa-plus-circle"></i>
-                  &nbsp;&nbsp;<p>Hariri Dawa</p>
-                </a>
-              </li> -->
+            </ul>
+            
+            <?php
+// Check if user has access to all stores
+include('dbcon.php');
+$username = $_SESSION['user_session'];
+$sidebar_user_query = mysqli_query($con, "SELECT can_access_all_stores FROM users WHERE user_name = '$username'");
+$sidebar_user_data = mysqli_fetch_assoc($sidebar_user_query);
+$can_access_all_stores = $sidebar_user_data['can_access_all_stores'];
+            
+            if ($can_access_all_stores == 1) {
+            ?>
+            <ul class="nav nav-treeview">
+                <li class="nav-item">
+                    <a href="user_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
+                    &nbsp;&nbsp;&nbsp;<i class="nav-icon fas fa-users"></i>
+                    &nbsp;&nbsp;<p>Watumiaji</p>
+                    </a>
+                </li>
             </ul>
             <ul class="nav nav-treeview">
-            <li class="nav-item">
-                <a href="user_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
-                &nbsp;&nbsp;&nbsp;<i class="nav-icon fas fa-users"></i>
-                  &nbsp;&nbsp;<p>Watumiaji</p>
-                </a>
-              </li>
+                <li class="nav-item">
+                    <a href="store_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
+                    &nbsp;&nbsp;&nbsp;<i class="nav-icon fas fa-store"></i>
+                    &nbsp;&nbsp;<p>Vituo/Matawi</p>
+                    </a>
+                </li>
             </ul>
-                        <ul class="nav nav-treeview">
-            <li class="nav-item">
-                <a href="store_management.php?invoice_number=<?php echo $_GET['invoice_number']?>" class="nav-link">
-                &nbsp;&nbsp;&nbsp;<i class="nav-icon fas fa-users"></i>
-                  &nbsp;&nbsp;<p>Vituo/Matawi</p>
-                </a>
-              </li>
-            </ul>
+            <?php } ?>
           </li>
           <li class="nav-item has-treeview">
           <a href="logout.php" class="nav-link">

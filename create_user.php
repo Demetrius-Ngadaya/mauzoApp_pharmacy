@@ -11,7 +11,7 @@ if (isset($_POST['user_name']) && isset($_POST['role']) && isset($_POST['passwor
 
     // Handle permission and store selection
     $can_access_all_stores = isset($_POST['can_access_all_stores']) && $_POST['can_access_all_stores'] == '1' ? 1 : 0;
-    $store_id = ($can_access_all_stores == 1 || empty($_POST['store_id'])) ? NULL : (int)$_POST['store_id'];
+    $store_id = ($can_access_all_stores == 1 || empty($_POST['store_id'])) ? 0 : (int)$_POST['store_id'];
 
     // Check if the username already exists
     $check_query = "SELECT * FROM users WHERE user_name = ?";

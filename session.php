@@ -27,4 +27,19 @@ $_SESSION['last_activity'] = time();
 $mtumiaji = $_SESSION['user_session'];
 $store_id = $_SESSION['store_id'];
 
+// NEW: Check if user has access to all stores and store it in session
+include('dbcon.php');
+if (isset($_SESSION['user_session']) && isset($con)) {
+    $username = $_SESSION['user_session'];
+    $user_access_query = mysqli_query($con, "SELECT can_access_all_stores FROM users WHERE user_name = '$username'");
+    
+    if ($user_access_query && mysqli_num_rows($user_access_query) > 0) {
+        $user_access_data = mysqli_fetch_assoc($user_access_query);
+        $_SESSION['can_access_all_stores'] = $user_access_data['can_access_all_stores'];
+    } else {
+        $_SESSION['can_access_all_stores'] = 0;
+    }
+} else {
+    $_SESSION['can_access_all_stores'] = 0;
+}
 ?>
